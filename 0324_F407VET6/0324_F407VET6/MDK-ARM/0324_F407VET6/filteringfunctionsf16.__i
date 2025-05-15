@@ -1,0 +1,10 @@
+-xc -std=gnu11 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c
+-fno-rtti -funsigned-char -fshort-enums -fshort-wchar
+-D__MICROLIB -gdwarf-4 -Os -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../Drivers/BSP -I ../Drivers/BSP/inc -I ../Drivers/APP/inc
+-I./RTE/_0324_F407VET6
+-IC:/Users/Huawei/AppData/Local/Arm/Packs/ARM/CMSIS-DSP/1.16.2/Include
+-IC:/Users/Huawei/AppData/Local/Arm/Packs/ARM/CMSIS-DSP/1.16.2/PrivateInclude
+-IC:/Users/Huawei/AppData/Local/Arm/Packs/ARM/CMSIS/6.1.0/CMSIS/Core/Include
+-IC:/Users/Huawei/AppData/Local/Arm/Packs/GorgonMeducer/perf_counter/2.3.3
+-D__UVISION_VERSION="541" -DSTM32F407xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F407xx  -include "Pre_Include_Global.h"
+-o ./0324_f407vet6/filteringfunctionsf16.o -MMD "C:/Users/Huawei/AppData/Local/Arm/Packs/ARM/CMSIS-DSP/1.16.2/Source/FilteringFunctions/FilteringFunctionsF16.c"

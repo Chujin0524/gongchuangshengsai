@@ -1,0 +1,48 @@
+#ifndef _mec_nav_h
+#define _mec_nav_h
+#include "zf_common_headfile.h"
+
+typedef struct _point_F_
+{
+    float x;
+    float y;
+}point_F;
+
+/*坐标，角度*/
+typedef struct _nav_loc_param_
+{
+    point_F loc;
+    float angle;
+}nav_loc_param;
+
+/*麦轮速度*/
+typedef struct _mec_spd_param_
+{
+    float A;
+    float B;
+    float C;
+    float D;
+}mec_spd_param;
+
+/*角度矢量*/
+typedef struct _mec_DIR_param_
+{
+    float ang;/*角度*/
+    float data;/*长度*/
+    float turn;
+}mec_DIR_param;
+
+
+void MEC_LOC_CACULATE(void);
+void dir_control(mec_DIR_param *SPD,uint8 fa);
+uint8 move_pos(nav_loc_param *taget);
+void MOVE_TILL_D(float x,float y,float a);
+void MOVE_TILL_DDDD(int x);
+void dir_control_X_Y(float x, float y,float a,uint8 fa);
+
+extern nav_loc_param TAGET_LOC;
+extern nav_loc_param current_loc[3];
+extern mec_spd_param MEC_SPEED[3];
+extern mec_DIR_param MEC_SPD_S;/*速度矢量*/
+extern float VEC_SPD_MAX;
+#endif

@@ -1,0 +1,205 @@
+#include "mec_nav.h"
+
+float MEC_WEELE_parameter = 1;/*这个半径决定轮子一圈的行程*/
+float VEC_SPD_MAX = 50;/*适量速度最大值*/
+float TURN_SPD_MAX = 30;/*适量转向*/
+mec_spd_param MEC_SPEED[3] = {0};/*麦轮转速*/
+mec_DIR_param MEC_SPD_S = {0};/*速度矢量*/
+nav_loc_param TAGET_LOC = {0};    /*坐标,用来带入*/
+nav_loc_param current_loc[3] = {0};          /*全局坐标,当前，上次，上上次*/
+
+/*麦克纳姆轮姿态解算
+麦克轮正解算，全局坐标*/
+void MEC_LOC_CACULATE(void)
+{
+    nav_loc_param DIS_TO_ADD = {0};
+
+
+    DIS_TO_ADD.angle = yaw_angle;/*应该带入的角度*/
+
+    DIS_TO_ADD.loc.x = ((MEC_SPEED[0].C + MEC_SPEED[0].D + MEC_SPEED[1].A + MEC_SPEED[1].B)/2 * cosf(DIS_TO_ADD.angle/180*PI) * MEC_WEELE_parameter)
+    + ((MEC_SPEED[0].C - MEC_SPEED[0].B + MEC_SPEED[1].A - MEC_SPEED[1].D)/2 * cosf((DIS_TO_ADD.angle + 90)/180*PI) * MEC_WEELE_parameter);
+
+
+    DIS_TO_ADD.loc.y = ((MEC_SPEED[0].C + MEC_SPEED[0].D + MEC_SPEED[1].A + MEC_SPEED[1].B)/2 * sinf(DIS_TO_ADD.angle/180*PI) * MEC_WEELE_parameter)
+    + ((MEC_SPEED[0].C - MEC_SPEED[0].B + MEC_SPEED[1].A - MEC_SPEED[1].D)/2 * sinf((DIS_TO_ADD.angle + 90)/180*PI) * MEC_WEELE_parameter);
+
+    current_loc[0].loc.x += DIS_TO_ADD.loc.x*0.01*0.2;
+    current_loc[0].loc.y += DIS_TO_ADD.loc.y*0.01*0.2;
+
+    current_loc[0].angle = yaw_angle;
+}
+
+
+
+/*麦轮逆解
+输入方向角，速度大小
+逆时针方向特别注意
+，计算转速*/
+void dir_control(mec_DIR_param *SPD,uint8 fa)
+{
+    float vx = 0,vy = 0;/*分解速度*/
+    int16 output[4];
+    static float v_w[4] = {0};
+    SPD->turn = limit_flt(SPD->turn,TURN_SPD_MAX,(-1*TURN_SPD_MAX));/*速度限幅*/
+    SPD->data = limit_flt(SPD->data,VEC_SPD_MAX,(-1*VEC_SPD_MAX));
+
+    vx = SPD->data * cosf( SPD->ang * PI / 180 );
+    vy = SPD->data * sinf( SPD->ang * PI / 180 );
+
+    float v_tx   = (float)vx;
+    float v_ty   = (float)vy;
+    float omega = (float)SPD->turn;
+
+    v_w[0] = v_tx - v_ty - omega;//r_x + r_y = 1
+    v_w[1] = v_tx + v_ty + omega;
+    v_w[2] = v_tx + v_ty - omega;
+    v_w[3] = v_tx - v_ty + omega;
+
+    output[0] = -(int16)(v_w[0] * 1);
+
+    output[1] = (int16)(v_w[1] * 1);
+
+    output[2] = -(int16)(v_w[2] * 1);
+
+    output[3] = (int16)(v_w[3] * 1);
+
+    MEC_SPEED[0].A = v_w[1];
+
+    MEC_SPEED[0].B = v_w[0];
+
+    MEC_SPEED[0].C = v_w[2];
+
+    MEC_SPEED[0].D = v_w[3];
+
+    move(&output[0],fa);
+}
+
+
+/*移动函数,输入坐标，角度*/
+uint8 move_pos(nav_loc_param *taget)
+{       
+        float LOC_DIV = 0;
+        float DIS_TO_GO = 0,ANG_TO_T;
+        float X_ = 0,Y_ = 0;
+
+        DIS_TO_GO = abs(taget->loc.x - current_loc[0].loc.x ) + abs( taget->loc.y - current_loc[0].loc.y);
+        ANG_TO_T = taget->angle - yaw_angle;
+        X_ = taget->loc.x - current_loc[0].loc.x;
+        Y_ = taget->loc.y - current_loc[0].loc.y;
+
+        if(Y_ == 0)
+        {
+            if(X_>=0)
+            {
+                MEC_SPD_S.ang = 90 - yaw_angle;
+            }
+            if(X_<0)
+            {
+                MEC_SPD_S.ang = -90 - yaw_angle;
+            }
+        }
+        else if(X_>=0 && Y_>0)
+        {
+            MEC_SPD_S.ang = abs(atanf( Y_ / X_) * 180 / PI) - yaw_angle;
+        }
+        else if(X_<0 && Y_>=0)
+        {
+            MEC_SPD_S.ang = 90 + abs(atanf( Y_ / X_) * 180 / PI) - yaw_angle;
+        }
+        else if(X_<0 && Y_<0)
+        {
+            MEC_SPD_S.ang = 180 + abs(atanf( Y_ / X_) * 180 / PI) - yaw_angle;
+        }
+
+        else if(X_>=0 && Y_<0)
+        {
+            MEC_SPD_S.ang = 270 + abs(atanf( Y_ / X_) * 180 / PI) - yaw_angle;
+        }
+
+        MEC_SPD_S.turn = 10*ANG_TO_T;
+
+        MEC_SPD_S.data = 1*DIS_TO_GO;
+
+       if(DIS_TO_GO > 5  ||  abs(ANG_TO_T) > 2)//灭有完成
+       {
+           dir_control(&MEC_SPD_S,250);
+           return(1);
+       }
+
+       else
+       {
+           MEC_SPD_S.ang = 0;
+           MEC_SPD_S.data = 0;
+           MEC_SPD_S.turn = 0;
+           dir_control(&MEC_SPD_S,250);
+           return(0);
+       }
+
+}
+
+/*坐标，角度*/
+void MOVE_TILL_D(float x,float y,float a)
+{
+    TAGET_LOC.loc.x = x;  TAGET_LOC.loc.y = y;  TAGET_LOC.angle = a;
+    while(move_pos(&TAGET_LOC) == 1)
+    {
+
+    }
+}
+
+void MOVE_TILL_DDDD(int x)
+{
+    TAGET_LOC.loc.x = ZB_TO_GO[x][0];  
+    TAGET_LOC.loc.y = ZB_TO_GO[x][1];  
+    TAGET_LOC.angle = ZB_TO_GO[x][2];
+    while(move_pos(&TAGET_LOC) == 1)
+    {
+
+    }
+}
+
+void dir_control_X_Y(float x, float y,float a,uint8 fa)
+{
+    float vx = 0,vy = 0;/*分解速度*/
+    int16 output[4];
+    static float v_w[4] = {0};
+
+    float v_tx   = 0;
+    float v_ty   = 0;
+
+    vx = x;
+    vy = y;
+
+     v_tx   = (float)vx;
+
+     v_ty   = (float)vy;
+
+    float omega = a;
+
+    v_w[0] = v_tx - v_ty - omega;//r_x + r_y = 1
+
+    v_w[1] = v_tx + v_ty + omega;
+
+    v_w[2] = v_tx + v_ty - omega;
+
+    v_w[3] = v_tx - v_ty + omega;
+
+    output[0] = -(int16)(v_w[0] * 1);
+
+    output[1] = (int16)(v_w[1] * 1);
+
+    output[2] = -(int16)(v_w[2] * 1);
+
+    output[3] = (int16)(v_w[3] * 1);
+
+    MEC_SPEED[0].A = v_w[1];
+
+    MEC_SPEED[0].B = v_w[0];
+
+    MEC_SPEED[0].C = v_w[2];
+
+    MEC_SPEED[0].D = v_w[3];
+
+    move(&output[0],fa);
+}
